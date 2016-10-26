@@ -1,6 +1,10 @@
 package daemon
 
-import "log"
+import (
+	"log"
+	"os/exec"
+	"path/filepath"
+)
 
 func init() {
 	//初始化配置
@@ -14,9 +18,13 @@ func init() {
 
 //Start 启动进程
 func Start() error {
-	log.Println(pid)
-	pid = run()
-	log.Println(pid)
+	path, err := filepath.Abs(appConf.String("scriptFile"))
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(path)
+	cmd.Start()
+	log.Println(cmd.Process.Pid)
 	return nil
 }
 

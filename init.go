@@ -15,7 +15,7 @@ var (
 
 //InitConf 初始化配置
 func InitConf() error {
-	configPath, err := filepath.Abs("daemon.conf")
+	configPath, err := filepath.Abs("conf.ini")
 	if err != nil {
 		return err
 	}
