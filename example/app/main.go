@@ -1,13 +1,20 @@
 package main
 
 import (
-	"log"
-	"time"
+	"fmt"
+	"os"
+	"os/signal"
 )
 
 func main() {
-	for true {
-		log.Println(time.Now())
-		time.Sleep(1 * time.Second)
-	}
+
+	c := make(chan os.Signal)
+	signal.Notify(c)
+	//监听指定信号
+	//signal.Notify(c, syscall.SIGHUP, syscall.SIGUSR2)
+
+	//阻塞直至有信号传入
+	s := <-c
+
+	fmt.Println("get signal:", s)
 }

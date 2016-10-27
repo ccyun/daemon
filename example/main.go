@@ -1,24 +1,27 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/ccyun/daemon"
 )
 
 func main() {
+	var err error
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "start":
-			daemon.Start()
+			err = daemon.Start()
 		case "restart":
-			daemon.Restart()
+			err = daemon.Restart()
 		case "stop":
-			daemon.Stop()
+			err = daemon.Stop()
 		default:
-			daemon.Start()
+			err = daemon.Start()
 		}
 	} else {
-		daemon.Start()
+		err = daemon.Start()
 	}
+	log.Println(err)
 }
