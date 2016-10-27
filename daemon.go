@@ -1,12 +1,13 @@
 package daemon
 
 import (
+	"errors"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 )
 
 var (
@@ -39,10 +40,8 @@ func init() {
 //Start 启动进程
 func Start() error {
 	getPID()
-	log.Println(PID)
 	if PID != 0 {
-		log.Println("Run is Successed!")
-		return nil
+		return errors.New("The script is running!")
 	}
 	cmd := exec.Command(scriptFile)
 	if err := cmd.Start(); err != nil {
@@ -52,17 +51,15 @@ func Start() error {
 	if err := setPID(); err != nil {
 		return err
 	}
-	log.Println("Run Successed!")
 	return nil
 }
 
 //Restart 重新启动进程
 func Restart() error {
-	Stop()
-	if err := Start(); err != nil {
+	if err := Stop(); err != nil {
 		return err
 	}
-	return nil
+	return Start()
 }
 
 //Stop 停止进程
@@ -75,9 +72,10 @@ func Stop() error {
 	if err != nil {
 		return err
 	}
-	if err := cmd.Kill(); err != nil {
+	if err := cmd.Signal(syscall.SIGQUIT); err != nil {
 		return err
 	}
+	cmd.Release()
 	return nil
 }
 

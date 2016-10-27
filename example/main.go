@@ -23,5 +23,9 @@ func main() {
 	} else {
 		err = daemon.Start()
 	}
-	log.Println(err)
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Println("successfully!")
+	}
 }
