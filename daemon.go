@@ -3,11 +3,13 @@ package daemon
 import (
 	"errors"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 var (
@@ -40,8 +42,8 @@ func init() {
 //Start 启动进程
 func Start() error {
 	getPID()
-	if PID != 0 {
-		return errors.New("The script is running!")
+	if PID != -1 {
+		return errors.New("Script is running!")
 	}
 	cmd := exec.Command(scriptFile)
 	if err := cmd.Start(); err != nil {
@@ -64,39 +66,46 @@ func Restart() error {
 
 //Stop 停止进程
 func Stop() error {
+	var (
+		err error
+		cmd *os.Process
+	)
+	if err = getPID(); err != nil {
+		return err
+	}
 	defer os.Remove(pidFile)
-	if err := getPID(); err != nil {
+
+	if cmd, err = os.FindProcess(PID); err != nil {
 		return err
 	}
-	cmd, err := os.FindProcess(PID)
-	if err != nil {
+	if err = cmd.Signal(syscall.SIGQUIT); err != nil {
 		return err
 	}
-	if err := cmd.Signal(syscall.SIGQUIT); err != nil {
+	if err = exitedProcess(); err != nil {
 		return err
 	}
-	cmd.Release()
 	return nil
 }
 
 //setPid PID写入文件
 func setPID() error {
 	dstFile, err := os.Create(pidFile)
-	defer dstFile.Close()
 	if err != nil {
 		return err
 	}
+	defer dstFile.Close()
 	dstFile.WriteString(strconv.Itoa(PID))
 	return nil
 }
 
 //getPID 读取PID
 func getPID() error {
+	PID = -1
 	dstFile, err := os.Open(pidFile)
-	defer dstFile.Close()
 	if err != nil {
 		return err
 	}
+	defer dstFile.Close()
 	b, err := ioutil.ReadAll(dstFile)
 	if err != nil {
 		return err
@@ -106,5 +115,21 @@ func getPID() error {
 		return err
 	}
 	PID = pid
+	return nil
+}
+
+//exitedProcess 判断进程是否退出
+func exitedProcess() error {
+	ProDir := "/proc/" + strconv.Itoa(PID) + "/"
+	s := "\033[33m Please waiting "
+
+	for {
+		s += "."
+		log.Println(s + "\033[0m")
+		time.Sleep(5 * time.Second)
+		if _, err := os.Stat(ProDir); err != nil {
+			break
+		}
+	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,6 +37,7 @@ func (app *app) doWork() {
 func (app *app) listenSignal() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
+	s := <-sig
+	log.Println(s)
 	app.close = true
 }
