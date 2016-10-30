@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,98 +11,139 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/astaxie/beego/config"
 )
 
+type app struct {
+	PID         int
+	ScriptFile  string
+	ScriptArgs  []string
+	PidFile     string
+	StopTimeOut int
+}
+
 var (
-	//PID 进程PID
-	PID        int
-	scriptFile string
-	pidFile    string
+	appConf config.Configer
+	//App 启动进程
+	App app
 )
 
 func init() {
-	//初始化配置
-	if err := InitConf(); err != nil {
-		panic(err)
+	var (
+		configPath string
+		err        error
+		checkErr   func(error)
+	)
+	checkErr = func(err error) {
+		if err != nil {
+			panic(err)
+		}
 	}
-	if err := InitLog(); err != nil {
-		panic(err)
-	}
-	if File, err := filepath.Abs(appConf.String("scriptFile")); err != nil {
-		panic(err)
+	rootPath := filepath.Dir(os.Args[0]) + "/"
+	configPath, err = filepath.Abs(rootPath + "./conf.ini")
+	checkErr(err)
+	appConf, err = config.NewConfig("ini", configPath)
+	checkErr(err)
+	App.ScriptFile = appConf.String("script_file")
+	App.PidFile = appConf.String("pid_file")
+	App.StopTimeOut, err = appConf.Int("stop_timeOut")
+	checkErr(err)
+	App.ScriptArgs = appConf.Strings("script_args")
+}
+
+//Run 运行指令
+func Run() {
+	var err error
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "start":
+			err = App.start()
+		case "restart":
+			err = App.restart()
+		case "stop":
+			err = App.stop()
+		default:
+			err = errors.New("Invalid instruction.")
+		}
+		if err != nil {
+			log.Println("\033[31m " + err.Error() + "\033[0m")
+		} else {
+			log.Println("\033[32m Successfully!\033[0m")
+		}
 	} else {
-		scriptFile = File
-	}
-	if File, err := filepath.Abs(appConf.String("pidFile")); err != nil {
-		panic(err)
-	} else {
-		pidFile = File
+		fmt.Println(`This is a tool to manage the background script.
+The commands are:
+-------------------------------------------
+start         Start the script process                                                                                                 
+restart       Restart the script process                                                                                                      
+stop          Stop the script process`)
 	}
 }
 
 //Start 启动进程
-func Start() error {
-	getPID()
-	if PID != -1 {
+func (App *app) start() error {
+	App.getPID()
+	if App.PID != -1 {
 		return errors.New("Script is running!")
 	}
-	cmd := exec.Command(scriptFile)
+	cmd := exec.Command(App.ScriptFile, App.ScriptArgs[0:]...)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	PID = cmd.Process.Pid
-	if err := setPID(); err != nil {
+	App.PID = cmd.Process.Pid
+	if err := App.setPID(); err != nil {
 		return err
 	}
 	return nil
 }
 
 //Restart 重新启动进程
-func Restart() error {
-	if err := Stop(); err != nil {
+func (App *app) restart() error {
+	if err := App.stop(); err != nil {
 		return err
 	}
-	return Start()
+	return App.start()
 }
 
 //Stop 停止进程
-func Stop() error {
+func (App *app) stop() error {
 	var (
 		err error
 		cmd *os.Process
 	)
-	if err = getPID(); err != nil {
+	if err := App.getPID(); err != nil {
 		return err
 	}
-	defer os.Remove(pidFile)
+	defer os.Remove(App.PidFile)
 
-	if cmd, err = os.FindProcess(PID); err != nil {
+	if cmd, err = os.FindProcess(App.PID); err != nil {
 		return err
 	}
 	if err = cmd.Signal(syscall.SIGQUIT); err != nil {
 		return err
 	}
-	if err = exitedProcess(); err != nil {
+	if err = App.exitedProcess(); err != nil {
 		return err
 	}
 	return nil
 }
 
 //setPid PID写入文件
-func setPID() error {
-	dstFile, err := os.Create(pidFile)
+func (App *app) setPID() error {
+	dstFile, err := os.Create(App.PidFile)
 	if err != nil {
 		return err
 	}
 	defer dstFile.Close()
-	dstFile.WriteString(strconv.Itoa(PID))
+	dstFile.WriteString(strconv.Itoa(App.PID))
 	return nil
 }
 
 //getPID 读取PID
-func getPID() error {
-	PID = -1
-	dstFile, err := os.Open(pidFile)
+func (App *app) getPID() error {
+	App.PID = -1
+	dstFile, err := os.Open(App.PidFile)
 	if err != nil {
 		return err
 	}
@@ -114,22 +156,23 @@ func getPID() error {
 	if err != nil {
 		return err
 	}
-	PID = pid
+	App.PID = pid
 	return nil
 }
 
 //exitedProcess 判断进程是否退出
-func exitedProcess() error {
-	ProDir := "/proc/" + strconv.Itoa(PID) + "/"
-	s := "\033[33m Please waiting "
-
-	for {
-		s += "."
-		log.Println(s + "\033[0m")
-		time.Sleep(5 * time.Second)
+func (App *app) exitedProcess() error {
+	ProDir := "/proc/" + strconv.Itoa(App.PID) + "/"
+	log.Println("\033[33m Please waiting ...\033[0m")
+	for i := 0; i < App.StopTimeOut; i++ {
+		if i%5 == 0 {
+			log.Println("\033[33m ...\033[0m")
+		}
+		time.Sleep(1 * time.Second)
 		if _, err := os.Stat(ProDir); err != nil {
-			break
+			App.PID = -1
+			return nil
 		}
 	}
-	return nil
+	return errors.New("Stop the script process timeOut")
 }
