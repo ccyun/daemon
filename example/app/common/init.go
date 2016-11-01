@@ -6,6 +6,8 @@ import (
 	"github.com/astaxie/beego/config"
 	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
+
+	"github.com/ccyun/daemon/example/app/model"
 	//mysql driver
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -20,7 +22,7 @@ func init() {
 				panic(err)
 			}
 		}
-	}(InitConfig, InitLog, InitMySQL)
+	}(InitConfig, InitLog, InitDB)
 }
 
 //InitConfig 初始化配置
@@ -39,18 +41,34 @@ func InitLog() error {
 	return nil
 }
 
-//InitMySQL 初始化数据库
-func InitMySQL() error {
-	dsn := Conf.String("mysql_dsn")
-	pool, _ := Conf.Int("mysql_pool")
+//InitDB 初始化数据库
+func InitDB() error {
+	var err error
+	model.DBType = Conf.String("db_type")
+	model.DBPrefix = Conf.String("db_prefix")
+	dsn := Conf.String("db_dsn")
+	pool, _ := Conf.Int("db_pool")
 	if dsn == "" || pool <= 0 {
-		return errors.New("InitMySQL error, Configuration error.[mysql_dsn,mysql_pool]")
+		return errors.New("InitDB error, Configuration error.[mysql_dsn,mysql_pool]")
 	}
-	if err := orm.RegisterDriver("mysql", orm.DRMySQL); err != nil {
+	switch model.DBType {
+	case "mysql":
+		err = orm.RegisterDriver(model.DBType, orm.DRMySQL)
+	case "sqlite":
+		err = orm.RegisterDriver(model.DBType, orm.DRSqlite)
+	case "oracle":
+		err = orm.RegisterDriver(model.DBType, orm.DROracle)
+	case "pgsql":
+		err = orm.RegisterDriver(model.DBType, orm.DRPostgres)
+	case "TiDB":
+		err = orm.RegisterDriver(model.DBType, orm.DRTiDB)
+	}
+	if err != nil {
 		return err
 	}
 	//最大数据库连接//最大空闲连接
-	if err := orm.RegisterDataBase("default", "mysql", dsn, pool, pool); err != nil {
+	err = orm.RegisterDataBase("default", "mysql", dsn, pool, pool)
+	if err != nil {
 		return err
 	}
 	return nil

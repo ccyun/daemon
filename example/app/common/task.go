@@ -1,5 +1,11 @@
 package common
 
+import (
+	"log"
+
+	"github.com/ccyun/daemon/example/app/model"
+)
+
 //Task 任务
 type Task struct {
 	ID int64
@@ -27,4 +33,8 @@ func Register(name string, adapter Tasker) {
 //Run 运行
 func Run() {
 	//dao.task.getOne()
+	task := new(model.Task)
+	log.Println(task)
+	task.GetOne(1)
+
 }

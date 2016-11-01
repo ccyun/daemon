@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/ccyun/daemon/example/app/model"
 )
 
 //App 流程控制
@@ -17,8 +19,15 @@ type App struct {
 	DoFunc func()
 }
 
+//initRegister 初始化注册
+func initRegister() {
+	model.RegisterModels()
+}
+
 //Run 启动
 func (app *App) Run() {
+	initRegister()
+	Run()
 	if len(os.Args) > 1 {
 		app.thread, _ = strconv.Atoi(os.Args[1])
 	}
