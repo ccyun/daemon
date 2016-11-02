@@ -10,5 +10,5 @@ func main() {
 
 }
 func work() {
-
+	common.Run()
 }

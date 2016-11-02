@@ -27,7 +27,6 @@ func initRegister() {
 //Run 启动
 func (app *App) Run() {
 	initRegister()
-	Run()
 	if len(os.Args) > 1 {
 		app.thread, _ = strconv.Atoi(os.Args[1])
 	}

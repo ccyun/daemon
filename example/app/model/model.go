@@ -3,17 +3,23 @@ package model
 import "github.com/astaxie/beego/orm"
 
 var (
-	DBType   string
+	//Debug 调试模式
+	Debug bool
+	//DBType 数据库类型
+	DBType string
+	//DBPrefix 表前缀
 	DBPrefix string
-	DB       orm.QueryBuilder
-	O        orm.Ormer
+	//DB 高级查询
+	DB orm.QueryBuilder
 )
 
 //RegisterModels 注册Model
 func RegisterModels() {
-	orm.Debug = true
-	O = orm.NewOrm()
-	DB, _ = orm.NewQueryBuilder(DBPrefix)
+	orm.Debug = Debug
+	orm.RegisterModelWithPrefix(DBPrefix, new(Queue))
+	DB, _ = orm.NewQueryBuilder(DBType)
+}
 
-	orm.RegisterModelWithPrefix(DBPrefix, new(Task))
+//Model 基础模型
+type Model struct {
 }

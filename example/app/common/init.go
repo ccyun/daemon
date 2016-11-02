@@ -38,12 +38,15 @@ func InitConfig() error {
 //InitLog 初始化log
 func InitLog() error {
 	logs.SetLogger("file", `{"filename":"`+Conf.String("log_file")+`"}`)
+	logs.EnableFuncCallDepth(true)
 	return nil
 }
 
 //InitDB 初始化数据库
 func InitDB() error {
 	var err error
+	debug, _ := Conf.Bool("debug")
+	model.Debug = debug
 	model.DBType = Conf.String("db_type")
 	model.DBPrefix = Conf.String("db_prefix")
 	dsn := Conf.String("db_dsn")
